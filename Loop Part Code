@@ -1,0 +1,191 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <avr\io.h>
+#include <util\delay.h>
+#include <avr\interrupt.h>
+
+#include "cc2500_lib_avr.c"
+#include "usart.c"
+
+#include "lcd_lib_bitwise.c"
+
+#define SetBit(x,y) (x|=(1<<y)) 
+#define ClrBit(x,y) (x&=~(1<<y))
+
+
+uint16_t timeup,signaltime,greenon;
+uint32_t ticks;
+
+uint8_t d1,d2,d3,d4,d5,d6,d7,d8,d9,d10;
+
+uint8_t rxdata ;
+
+
+static int LCDsendstream(char c, FILE *stream);
+//----set output stream to LCD-------
+static FILE lcd_str = FDEV_SETUP_STREAM(LCDsendstream, NULL, _FDEV_SETUP_WRITE);
+static int LCDsendstream(char c , FILE *stream);
+
+static int LCDsendstream(char c , FILE *stream)
+{
+LCDsendChar(c);
+return 0;
+}
+
+ISR(TIMER1_OVF_vect)
+{
+cli();
+  timeup ++;
+  sei();
+} 
+
+
+void starttimer(void)
+{
+	TIMSK |= (1 << TOIE1); // Enable overflow interrupt
+	TCCR1B =0b00000110;
+	TCCR1A = 0b00000000;
+	TCNT1 = 0;
+	timeup =0;
+	sei();
+
+}
+
+void stoptimer(void)
+{
+cli();
+TCCR1B =0;
+}
+
+void convert(uint32_t cnn)
+	{
+	d1 = cnn % 10 +48;
+	cnn = cnn /10;
+	d2 = cnn % 10 +48;
+	cnn = cnn /10;
+	d3 = cnn % 10 +48;
+	cnn = cnn /10;
+	d4 = cnn % 10 +48;
+	cnn = cnn /10;
+	d5 = cnn % 10 +48;
+	cnn = cnn /10;
+	d6 = cnn % 10 +48;
+	cnn = cnn /10;
+	d7 = cnn % 10 +48;
+	cnn = cnn /10;
+	d8 = cnn % 10 +48;
+	cnn = cnn /10;
+	d9 = cnn % 10 +48;
+	cnn = cnn /10;
+	d10 = cnn % 10 +48;
+	}
+
+
+void read_frequency(void)
+	{
+	starttimer();
+		_delay_ms(249);
+		stoptimer();
+		ticks = (timeup * 65536L);
+		ticks = ticks + TCNT1;
+		ticks = ticks * 4 ;	
+		convert(ticks);
+		LCDGotoXY(0,1);
+		
+		LCDsendChar(d10);
+		LCDsendChar(d9);
+		LCDsendChar(d8);
+		LCDsendChar(d7);
+		LCDsendChar(d6);
+		LCDsendChar(d5);
+		LCDsendChar(d4);
+		LCDsendChar(d3);
+		LCDsendChar(d2);
+		LCDsendChar(d1);
+		LCDsendChar('H');
+		LCDsendChar('z');
+
+
+	data[0] = CC2500_DESTINATIONADDR_value;
+        data[1] = '1';//ID 
+		data[2] = d10;
+		data[3] = d9;
+		data[4] = d8;
+		data[5] = d7;
+		data[6] = d6;
+		data[7] = d5;
+		data[8] = d4;
+		data[9] = d3;
+		data[10] = d2;
+		data[11] = d1;
+	
+	}
+
+int main(void)
+	{	
+	stdout = &lcd_str;
+
+	_delay_ms(100);
+
+//	TX_NEWLINE;
+//	transmitString("Welcome");
+//	TX_NEWLINE;
+	
+		LCDinit();
+		LCDclr();
+		printf("NODE 1");
+		
+		USARTInit();
+		init_cc2500();
+	
+
+
+		SetBit(DDRC,4);
+		SetBit(DDRC,5);
+	
+		SetBit(PORTC,4);
+		ClrBit(PORTC,5);
+		greenon = 0;
+
+
+//while(1);
+	while(1)
+		{
+		read_frequency();
+		jhjhj = rxRecvPacket(data,&packetLength);
+	   	if (jhjhj == RX_OK)
+			{
+				LCDGotoXY(15,1);
+				LCDsendChar(data[1]);
+
+				if(data[1] == '1')
+					{
+					data[0] = 30;
+					data[1] = '1';//ID 
+					data[2] = d10;
+					data[3] = d9;
+					data[4] = d8;
+					data[5] = d7;
+					data[6] = d6;
+					data[7] = d5;
+					data[8] = d4;
+					data[9] = d3;
+					data[10] = d2;
+					data[11] = d1;
+					transmiitt_data();  ///LOOP ID 1
+					_delay_ms(10);
+					}
+			RX_LED_OFF;
+			}
+		else
+			{
+			RX_LED_OFF;
+			}	
+		
+	
+		
+		} //end of while 1
+	
+	return(0);
+	}
