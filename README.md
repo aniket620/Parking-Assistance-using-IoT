@@ -1,4 +1,4 @@
-# Parking_Assistance_on_a_Crowded_Streets_Using_Embedded_Systems_and_IoT
+# Parking_Assistance_on_a_Crowded_Streets_Using_IoT
 
 Overview
 
